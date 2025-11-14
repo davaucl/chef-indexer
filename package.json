@@ -5,9 +5,13 @@
   "main": "dist/index.js",
   "scripts": {
     "start": "tsx src/index.ts",
+    "start:prod": "node dist/index.js",
     "discover": "tsx src/index.ts discover",
+    "discover:prod": "node dist/index.js discover",
     "enrich": "tsx src/index.ts enrich",
+    "enrich:prod": "node dist/index.js enrich",
     "export": "tsx src/index.ts export",
+    "export:prod": "node dist/index.js export",
     "test": "npm run test:instagram && npm run test:youtube && npm run test:patreon && npm run test:substack",
     "test:all": "npm run test",
     "test:substack": "tsx tests/platforms/substack.ts",
