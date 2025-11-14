@@ -60,6 +60,7 @@ export interface ScraperResult {
   following_count?: number;
   total_content_count?: number;
   social_links?: string[];
+  similar_accounts?: string[];
   subscription_price_lowest?: number;
   subscription_currency?: string;
   content_samples?: ContentSampleInput[];

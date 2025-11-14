@@ -3,7 +3,7 @@ import { YouTubeScraper } from './scrapers/youtube';
 import { PatreonScraper } from './scrapers/patreon';
 import { SubstackScraper } from './scrapers/substack';
 import { DatabaseManager } from './storage/database';
-import { SEED_INSTAGRAM, SEED_YOUTUBE, SEED_PATREON, SEED_SUBSTACK } from './data/seeds';
+import { SEED_INSTAGRAM, SEED_YOUTUBE, SEED_PATREON, SEED_SUBSTACKS } from './data/seeds';
 import { FoodClassifier } from './utils/food-classifier';
 import * as fs from 'fs';
 
@@ -97,8 +97,8 @@ class DiscoveryEngine {
     }
 
     // Add Substack seeds
-    if (SEED_SUBSTACK && SEED_SUBSTACK.length > 0) {
-      SEED_SUBSTACK.forEach((handle: string) => {
+    if (SEED_SUBSTACKS && SEED_SUBSTACKS.length > 0) {
+      SEED_SUBSTACKS.forEach((handle: string) => {
         this.addToQueue({
           handle,
           platform: 'substack',
@@ -106,7 +106,7 @@ class DiscoveryEngine {
           priority: 0,
         });
       });
-      console.log(`✅ Added ${SEED_SUBSTACK.length} Substack seeds`);
+      console.log(`✅ Added ${SEED_SUBSTACKS.length} Substack seeds`);
     }
 
     console.log('');
