@@ -5,6 +5,7 @@ import { delay, extractUrls, cleanHandle, cleanPostUrl, removeEmojis } from '../
 import { config } from '../config';
 import { SEED_INSTAGRAM } from '../data/seeds';
 import { HeadlessBrowser } from '../utils/headless';
+import { isFoodRelated } from '../utils/food-detection';
 
 export class InstagramScraper {
   private headless: HeadlessBrowser | null = null;
@@ -384,7 +385,7 @@ export class InstagramScraper {
     keywords: string[],
     useGoogle = true,
     maxResults = Infinity,
-    snowballRounds = 2
+    snowballRounds = 4
   ): Promise<ScraperResult[]> {
     const allProfileUrls = new Set<string>();
     const scrapedUrls = new Set<string>();
@@ -474,8 +475,8 @@ export class InstagramScraper {
             console.log(`    → Found ${similarCount} similar accounts`);
           }
 
-          const isFoodRelated = this.isFoodRelated(result);
-          if (isFoodRelated) {
+          const isFood = isFoodRelated(result);
+          if (isFood) {
             results.push(result);
 
             const details = [];
@@ -532,35 +533,5 @@ export class InstagramScraper {
     if (this.headless) {
       await this.headless.close();
     }
-  }
-
-  private isFoodRelated(result: ScraperResult): boolean {
-    const foodKeywords = [
-      'recipe',
-      'cook',
-      'bake',
-      'food',
-      'kitchen',
-      'chef',
-      'meal',
-      'dish',
-      'cuisine',
-      'culinary',
-      'ingredient',
-      'dining',
-      'restaurant',
-      'eat',
-      'gastro',
-      'flavor',
-      'taste',
-      'dessert',
-      'pastry',
-      'bread',
-      'cake',
-      'foodie',
-    ];
-
-    const textToCheck = `${result.display_name} ${result.bio_text || ''}`.toLowerCase();
-    return foodKeywords.some((keyword) => textToCheck.includes(keyword));
   }
 }

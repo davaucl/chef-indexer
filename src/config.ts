@@ -12,6 +12,7 @@ export const config = {
 };
 
 export const FOOD_KEYWORDS = [
+  // Core food terms
   'recipe',
   'recipes',
   'cooking',
@@ -19,11 +20,78 @@ export const FOOD_KEYWORDS = [
   'baking',
   'bake',
   'food',
+  'foodie',
   'food blog',
+  'foodblog',
+  'food blogger',
   'home cook',
+  'homemade',
+  'homecooking',
+  'fromscratch',
   'meal prep',
-  'dessert',
-  'pastry',
+  'mealprep',
   'kitchen',
   'chef',
+  'eats',
+
+  // Diet types
+  'vegan',
+  'vegetarian',
+  'plantbased',
+  'plant based',
+  'keto',
+  'paleo',
+  'glutenfree',
+  'gluten free',
+  'dairyfree',
+  'dairy free',
+
+  // Meal types
+  'breakfast',
+  'lunch',
+  'dinner',
+  'brunch',
+  'snack',
+  'snacks',
+  'appetizer',
+  'appetizers',
+  'entree',
+  'side dish',
+
+  // Cooking methods
+  'grill',
+  'grilling',
+  'bbq',
+  'barbecue',
+  'smoke',
+  'smoking',
+  'ferment',
+  'fermentation',
+  'pickle',
+  'pickling',
+  'canning',
+  'roasting',
+  'sauteing',
+
+  // Specialties
+  'sourdough',
+  'bread',
+  'breadmaking',
+  'pastry',
+  'pizza',
+  'pasta',
+  'noodles',
+  'sushi',
+  'ramen',
+  'dessert',
+  'desserts',
+  'cake',
+  'cakes',
+
+  // General cooking terms
+  'cuisine',
+  'culinary',
+  'cooking tips',
+  'cookingtips',
+  'food tips',
 ];

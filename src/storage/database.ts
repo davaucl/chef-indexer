@@ -81,9 +81,10 @@ export class DatabaseManager {
   }
 
   upsertCreatorFromPlatformData(platform: Platform, data: ScraperResult): number {
+    // Check for existing account by BOTH profile_url AND (platform, handle)
     const existingAccount = this.db
-      .prepare('SELECT creator_id FROM platform_accounts WHERE profile_url = ?')
-      .get(data.profile_url) as { creator_id: number } | undefined;
+      .prepare('SELECT creator_id, platform_account_id FROM platform_accounts WHERE profile_url = ? OR (platform = ? AND handle = ?)')
+      .get(data.profile_url, platform, data.handle) as { creator_id: number; platform_account_id: number } | undefined;
 
     let creatorId: number;
 
@@ -119,28 +120,38 @@ export class DatabaseManager {
   }
 
   private createPlatformAccount(platform: Platform, data: ScraperResult, creatorId: number) {
-    this.db
-      .prepare(
-        `INSERT INTO platform_accounts (
-          creator_id, platform, handle, display_name, profile_url, bio_text,
-          follower_count, following_count, total_content_count,
-          subscription_price_lowest, subscription_currency, social_links
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-      .run(
-        creatorId,
-        platform,
-        data.handle,
-        data.display_name,
-        data.profile_url,
-        data.bio_text || null,
-        data.follower_count || null,
-        data.following_count || null,
-        data.total_content_count || null,
-        data.subscription_price_lowest || null,
-        data.subscription_currency || null,
-        JSON.stringify(data.social_links || [])
-      );
+    try {
+      this.db
+        .prepare(
+          `INSERT INTO platform_accounts (
+            creator_id, platform, handle, display_name, profile_url, bio_text,
+            follower_count, following_count, total_content_count,
+            subscription_price_lowest, subscription_currency, social_links
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        )
+        .run(
+          creatorId,
+          platform,
+          data.handle,
+          data.display_name,
+          data.profile_url,
+          data.bio_text || null,
+          data.follower_count || null,
+          data.following_count || null,
+          data.total_content_count || null,
+          data.subscription_price_lowest || null,
+          data.subscription_currency || null,
+          JSON.stringify(data.social_links || [])
+        );
+    } catch (error: any) {
+      // If still hits UNIQUE constraint, this means the upsert check missed it
+      // In this case, just update the existing record
+      if (error.message?.includes('UNIQUE constraint')) {
+        this.updatePlatformAccount(platform, data, creatorId);
+      } else {
+        throw error;
+      }
+    }
   }
 
   private updatePlatformAccount(platform: Platform, data: ScraperResult, creatorId: number) {
@@ -222,6 +233,14 @@ export class DatabaseManager {
         )
         .run(stats.avg_views, stats.avg_likes, stats.avg_comments, accountId);
     }
+  }
+
+  // Check if a creator already exists in the database
+  creatorExists(platform: Platform, handle: string): boolean {
+    const existing = this.db
+      .prepare('SELECT 1 FROM platform_accounts WHERE platform = ? AND handle = ? LIMIT 1')
+      .get(platform, handle);
+    return !!existing;
   }
 
   getStats() {

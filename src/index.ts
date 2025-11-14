@@ -33,19 +33,25 @@ async function main() {
         console.log('           SUBSTACK DISCOVERY');
         console.log('═══════════════════════════════════════');
 
-        const substackScraper = new SubstackScraper();
+        const substackScraper = new SubstackScraper(true); // Enable AI classification
         const substackResults = await substackScraper.discoverAndScrape(FOOD_KEYWORDS, false, 2, limit);
 
         console.log('\n💾 Saving Substack creators to database...');
+        let skipped = 0;
         for (const result of substackResults) {
           try {
+            // Check if already exists before saving
+            if (db.creatorExists('substack', result.handle)) {
+              skipped++;
+              continue;
+            }
             db.upsertCreatorFromPlatformData('substack', result);
             totalSaved++;
           } catch (error: any) {
             console.error(`Error saving ${result.profile_url}:`, error.message);
           }
         }
-        console.log(`✅ Saved ${substackResults.length} Substack creators`);
+        console.log(`✅ Saved ${substackResults.length - skipped} Substack creators (${skipped} already existed)`);
       }
 
       if (platform === 'all' || platform === 'patreon') {
@@ -57,15 +63,20 @@ async function main() {
         const patreonResults = await patreonScraper.discoverAndScrape(FOOD_KEYWORDS, false, 2, limit);
 
         console.log('\n💾 Saving Patreon creators to database...');
+        let skipped = 0;
         for (const result of patreonResults) {
           try {
+            if (db.creatorExists('patreon', result.handle)) {
+              skipped++;
+              continue;
+            }
             db.upsertCreatorFromPlatformData('patreon', result);
             totalSaved++;
           } catch (error: any) {
             console.error(`Error saving ${result.profile_url}:`, error.message);
           }
         }
-        console.log(`✅ Saved ${patreonResults.length} Patreon creators`);
+        console.log(`✅ Saved ${patreonResults.length - skipped} Patreon creators (${skipped} already existed)`);
       }
 
       if (platform === 'all' || platform === 'youtube') {
@@ -77,15 +88,20 @@ async function main() {
         const youtubeResults = await youtubeScraper.discoverAndScrape(FOOD_KEYWORDS, 1, limit);
 
         console.log('\n💾 Saving YouTube creators to database...');
+        let skipped = 0;
         for (const result of youtubeResults) {
           try {
+            if (db.creatorExists('youtube', result.handle)) {
+              skipped++;
+              continue;
+            }
             db.upsertCreatorFromPlatformData('youtube', result);
             totalSaved++;
           } catch (error: any) {
             console.error(`Error saving ${result.profile_url}:`, error.message);
           }
         }
-        console.log(`✅ Saved ${youtubeResults.length} YouTube creators`);
+        console.log(`✅ Saved ${youtubeResults.length - skipped} YouTube creators (${skipped} already existed)`);
       }
 
       if (platform === 'all' || platform === 'instagram') {
@@ -97,15 +113,20 @@ async function main() {
         const instagramResults = await instagramScraper.discoverAndScrape(FOOD_KEYWORDS, true, limit, 2);
 
         console.log('\n💾 Saving Instagram creators to database...');
+        let skipped = 0;
         for (const result of instagramResults) {
           try {
+            if (db.creatorExists('instagram', result.handle)) {
+              skipped++;
+              continue;
+            }
             db.upsertCreatorFromPlatformData('instagram', result);
             totalSaved++;
           } catch (error: any) {
             console.error(`Error saving ${result.profile_url}:`, error.message);
           }
         }
-        console.log(`✅ Saved ${instagramResults.length} Instagram creators`);
+        console.log(`✅ Saved ${instagramResults.length - skipped} Instagram creators (${skipped} already existed)`);
       }
 
       console.log(`\n🎉 Discovery complete! Total saved: ${totalSaved} creators`);

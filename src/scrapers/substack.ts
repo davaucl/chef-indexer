@@ -4,8 +4,23 @@ import { ScraperResult, ContentSampleInput } from '../models/types';
 import { delay, extractUrls, cleanHandle } from '../utils/helpers';
 import { config } from '../config';
 import { SEED_SUBSTACKS } from '../data/seeds';
+import { FoodClassifier } from '../utils/food-classifier';
+import { isFoodRelated } from '../utils/food-detection';
 
 export class SubstackScraper {
+  private foodClassifier: FoodClassifier | null = null;
+
+  constructor(useAI = false) {
+    if (useAI) {
+      try {
+        this.foodClassifier = new FoodClassifier();
+        console.log('✅ AI food classification enabled for Substack\n');
+      } catch {
+        console.log('⚠️  AI food classification disabled (OPENAI_API_KEY not set)\n');
+        console.log('   Falling back to keyword-based detection.\n');
+      }
+    }
+  }
   private async fetchWithRetry(url: string, retries = 3): Promise<string> {
     for (let i = 0; i < retries; i++) {
       try {
@@ -334,8 +349,8 @@ export class SubstackScraper {
 
         const result = await this.scrapePublication(url);
         if (result) {
-          const isFoodRelated = this.isFoodRelated(result);
-          if (isFoodRelated) {
+          const isFood = await this.isFoodRelatedAsync(result);
+          if (isFood) {
             results.push(result);
 
             const details = [];
@@ -370,30 +385,33 @@ export class SubstackScraper {
     return results;
   }
 
-  private isFoodRelated(result: ScraperResult): boolean {
-    const foodKeywords = [
-      'recipe',
-      'cook',
-      'bake',
-      'food',
-      'kitchen',
-      'chef',
-      'meal',
-      'dish',
-      'cuisine',
-      'culinary',
-      'ingredient',
-      'dining',
-      'restaurant',
-      'eat',
-      'gastro',
-      'flavor',
-      'taste',
-      'dessert',
-      'pastry',
-    ];
+  private async isFoodRelatedAsync(result: ScraperResult): Promise<boolean> {
+    // Use AI classification if available
+    if (this.foodClassifier) {
+      try {
+        const postTitles = result.content_samples?.map((post) => post.title_or_caption).filter(Boolean) || [];
 
-    const textToCheck = `${result.display_name} ${result.bio_text || ''}`.toLowerCase();
-    return foodKeywords.some((keyword) => textToCheck.includes(keyword));
+        const classification = await this.foodClassifier.isFoodCreator({
+          platform: 'substack',
+          handle: result.handle,
+          displayName: result.display_name,
+          bio: result.bio_text,
+          recentPosts: postTitles.slice(0, 10), // Send first 10 post titles for context
+        });
+
+        console.log(
+          `    ${classification.isFoodCreator ? '✅' : '❌'} AI: ${classification.isFoodCreator ? 'FOOD' : 'NOT FOOD'} (confidence: ${(classification.confidence * 100).toFixed(0)}%)`
+        );
+        console.log(`    Reason: ${classification.reason}`);
+
+        return classification.isFoodCreator && classification.confidence > 0.4;
+      } catch (error: any) {
+        console.log(`    ⚠️  AI classification failed: ${error.message}`);
+        console.log(`    Falling back to keyword detection...`);
+      }
+    }
+
+    // Fallback to keyword-based detection using shared utility
+    return isFoodRelated(result);
   }
 }

@@ -6,6 +6,7 @@ import { DatabaseManager } from './storage/database';
 import { SEED_INSTAGRAM, SEED_YOUTUBE, SEED_PATREON, SEED_SUBSTACKS } from './data/seeds';
 import { FoodClassifier } from './utils/food-classifier';
 import * as fs from 'fs';
+import * as path from 'path';
 
 interface DiscoveryQueue {
   handle: string;
@@ -40,18 +41,23 @@ class DiscoveryEngine {
 
   constructor() {
     this.db = new DatabaseManager();
+
+    // Check if AI is available
+    const aiEnabled = !!process.env.OPENAI_API_KEY;
+
     this.instagramScraper = new InstagramScraper(true, true, 20); // Full metrics
-    this.youtubeScraper = new YouTubeScraper();
-    this.patreonScraper = new PatreonScraper();
-    this.substackScraper = new SubstackScraper();
+    this.youtubeScraper = new YouTubeScraper(aiEnabled); // Enable AI if available
+    this.patreonScraper = new PatreonScraper(aiEnabled); // Enable AI if available
+    this.substackScraper = new SubstackScraper(aiEnabled); // Enable AI if available
 
     // Initialize food classifier if OpenAI key available
     try {
       this.foodClassifier = new FoodClassifier();
-      console.log('✅ Food classifier enabled (using OpenAI)\n');
+      console.log('✅ Food classifier enabled for discovery engine (using OpenAI)\n');
     } catch {
       console.log('⚠️  Food classifier disabled (OPENAI_API_KEY not set)\n');
-      console.log('   All discovered accounts will be indexed without filtering.\n');
+      console.log('   Instagram will use keyword-based filtering only.\n');
+      console.log('   All other platforms will use keyword-based detection.\n');
     }
   }
 
@@ -174,8 +180,8 @@ class DiscoveryEngine {
           );
           console.log(`      Reason: ${classification.reason}`);
 
-          // If not food creator, mark in DB and skip
-          if (!classification.isFoodCreator && classification.confidence > 0.7) {
+          // If not food creator with high confidence, mark in DB and skip
+          if (!classification.isFoodCreator && classification.confidence > 0.4) {
             // Mark as non-food in database
             const creatorId = (this.db as any).db
               .prepare('INSERT INTO creators (display_name, is_food_creator, food_confidence) VALUES (?, 0, ?)')
@@ -355,10 +361,16 @@ class DiscoveryEngine {
 
   // Process Substack publication
   async processSubstack(item: DiscoveryQueue) {
-    const publicationUrl = `https://${item.handle}.substack.com`;
+    // Handle both full URLs and just handles
+    const publicationUrl = item.handle.startsWith('http')
+      ? item.handle
+      : `https://${item.handle}.substack.com`;
 
     try {
-      console.log(`   📝 Scraping Substack ${item.handle}...`);
+      const displayHandle = item.handle.startsWith('http')
+        ? item.handle.match(/https?:\/\/([^.]+)\.substack\.com/)?.[1] || item.handle
+        : item.handle;
+      console.log(`   📝 Scraping Substack ${displayHandle}...`);
 
       const result = await this.substackScraper.scrapePublication(publicationUrl);
 
@@ -576,10 +588,43 @@ class DiscoveryEngine {
 
     // Database stats
     const dbStats = this.db.getStats();
+    const totalCreators = dbStats.total_creators;
+    const totalAccounts = (dbStats.accounts_by_platform as any[]).reduce((sum, p) => sum + p.count, 0);
+
     console.log(`\n💾 Database:`);
-    console.log(`   Creators: ${dbStats.total_creators}`);
-    console.log(`   Total Accounts: ${(dbStats.accounts_by_platform as any[]).reduce((sum, p) => sum + p.count, 0)}`);
-    console.log(`   Content Samples: ${dbStats.total_content_samples}`);
+    console.log(`   Total Creators: ${totalCreators.toLocaleString()}`);
+    console.log(`   Total Accounts: ${totalAccounts.toLocaleString()}`);
+    console.log(`   Content Samples: ${dbStats.total_content_samples.toLocaleString()}`);
+
+    // Growth metrics
+    const elapsedHours = elapsed / 60;
+    const profilesPerHour = elapsedHours > 0 ? (this.stats.totalProcessed / elapsedHours) : 0;
+
+    console.log(`\n📈 Growth Metrics:`);
+    console.log(`   Processing Rate: ${profilesPerHour.toFixed(1)} profiles/hour`);
+
+    if (totalCreators < 10000 && profilesPerHour > 0) {
+      const remainingProfiles = 10000 - totalCreators;
+      const hoursTo10k = remainingProfiles / profilesPerHour;
+      if (hoursTo10k < 100) {
+        console.log(`   Estimated time to 10,000 profiles: ${hoursTo10k.toFixed(1)} hours`);
+      }
+    } else if (totalCreators >= 10000) {
+      console.log(`   🎉 Target of 10,000 profiles reached!`);
+    }
+
+    // Database file size
+    try {
+      const dbPath = (this.db as any).dbPath || './data/creators.db';
+      if (fs.existsSync(dbPath)) {
+        const stats = fs.statSync(dbPath);
+        const sizeInMB = (stats.size / 1024 / 1024).toFixed(2);
+        console.log(`   Database file size: ${sizeInMB} MB`);
+      }
+    } catch {
+      // Ignore file size errors
+    }
+
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
   }
 
@@ -623,6 +668,14 @@ class DiscoveryEngine {
     console.log('📤 Auto-exporting database to JSON...');
     try {
       const exportPath = './data/export.json';
+      const exportDir = path.dirname(exportPath);
+
+      // Ensure export directory exists
+      if (!fs.existsSync(exportDir)) {
+        fs.mkdirSync(exportDir, { recursive: true });
+        console.log(`   Created export directory: ${exportDir}`);
+      }
+
       this.db.exportToJson(exportPath);
       console.log(`✅ Exported to ${exportPath}\n`);
     } catch (error: any) {

@@ -4,8 +4,24 @@ import { ScraperResult, ContentSampleInput } from '../models/types';
 import { delay, extractUrls, cleanHandle } from '../utils/helpers';
 import { config } from '../config';
 import { SEED_PATREON } from '../data/seeds';
+import { isFoodRelated } from '../utils/food-detection';
+import { FoodClassifier } from '../utils/food-classifier';
 
 export class PatreonScraper {
+  private foodClassifier: FoodClassifier | null = null;
+
+  constructor(useAI = false) {
+    if (useAI) {
+      try {
+        this.foodClassifier = new FoodClassifier();
+        console.log('✅ AI food classification enabled for Patreon\n');
+      } catch {
+        console.log('⚠️  AI food classification disabled (OPENAI_API_KEY not set)\n');
+        console.log('   Falling back to keyword-based detection.\n');
+      }
+    }
+  }
+
   private async fetchWithRetry(url: string, retries = 3): Promise<string> {
     for (let i = 0; i < retries; i++) {
       try {
@@ -244,8 +260,8 @@ export class PatreonScraper {
 
   async discoverAndScrape(
     keywords: string[],
-    useGoogle = false,
-    snowballDepth = 2,
+    useGoogle = true,
+    snowballDepth = 3,
     maxResults = Infinity
   ): Promise<ScraperResult[]> {
     const allCreatorUrls = new Set<string>();
@@ -305,8 +321,8 @@ export class PatreonScraper {
 
         const result = await this.scrapeCreator(url);
         if (result) {
-          const isFoodRelated = this.isFoodRelated(result);
-          if (isFoodRelated) {
+          const isFood = await this.isFoodRelatedAsync(result);
+          if (isFood) {
             results.push(result);
 
             const details = [];
@@ -341,32 +357,34 @@ export class PatreonScraper {
     return results;
   }
 
-  private isFoodRelated(result: ScraperResult): boolean {
-    const foodKeywords = [
-      'recipe',
-      'cook',
-      'bake',
-      'food',
-      'kitchen',
-      'chef',
-      'meal',
-      'dish',
-      'cuisine',
-      'culinary',
-      'ingredient',
-      'dining',
-      'restaurant',
-      'eat',
-      'gastro',
-      'flavor',
-      'taste',
-      'dessert',
-      'pastry',
-      'bread',
-      'cake',
-    ];
+  private async isFoodRelatedAsync(result: ScraperResult): Promise<boolean> {
+    // Use AI classification if available
+    if (this.foodClassifier) {
+      try {
+        // Extract post titles from content samples
+        const postTitles = result.content_samples?.map((post) => post.title_or_caption).filter(Boolean) || [];
 
-    const textToCheck = `${result.display_name} ${result.bio_text || ''}`.toLowerCase();
-    return foodKeywords.some((keyword) => textToCheck.includes(keyword));
+        const classification = await this.foodClassifier.isFoodCreator({
+          platform: 'patreon',
+          handle: result.handle,
+          displayName: result.display_name,
+          bio: result.bio_text,
+          recentPosts: postTitles.slice(0, 10), // Send first 10 post titles for context
+        });
+
+        console.log(
+          `    ${classification.isFoodCreator ? '✅' : '❌'} AI: ${classification.isFoodCreator ? 'FOOD' : 'NOT FOOD'} (confidence: ${(classification.confidence * 100).toFixed(0)}%)`
+        );
+        console.log(`    Reason: ${classification.reason}`);
+
+        return classification.isFoodCreator && classification.confidence > 0.4;
+      } catch (error: any) {
+        console.log(`    ⚠️  AI classification failed: ${error.message}`);
+        console.log(`    Falling back to keyword detection...`);
+      }
+    }
+
+    // Fallback to keyword-based detection using shared utility
+    return isFoodRelated(result);
   }
 }

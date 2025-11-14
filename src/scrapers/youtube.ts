@@ -3,6 +3,8 @@ import { ScraperResult, ContentSampleInput } from '../models/types';
 import { delay, extractUrls, cleanHandle } from '../utils/helpers';
 import { config } from '../config';
 import { SEED_YOUTUBE } from '../data/seeds';
+import { isFoodRelated } from '../utils/food-detection';
+import { FoodClassifier } from '../utils/food-classifier';
 
 interface YouTubeChannel {
   id: string;
@@ -38,11 +40,22 @@ interface YouTubeVideoDetails {
 
 export class YouTubeScraper {
   private apiKey: string;
+  private foodClassifier: FoodClassifier | null = null;
 
-  constructor() {
+  constructor(useAI = false) {
     this.apiKey = process.env.YOUTUBE_API_KEY || '';
     if (!this.apiKey) {
       console.warn('⚠️  YOUTUBE_API_KEY not set. YouTube scraper will not work.');
+    }
+
+    if (useAI) {
+      try {
+        this.foodClassifier = new FoodClassifier();
+        console.log('✅ AI food classification enabled for YouTube\n');
+      } catch {
+        console.log('⚠️  AI food classification disabled (OPENAI_API_KEY not set)\n');
+        console.log('   Falling back to keyword-based detection.\n');
+      }
     }
   }
 
@@ -261,7 +274,7 @@ export class YouTubeScraper {
 
   async discoverAndScrape(
     keywords: string[],
-    snowballDepth = 1,
+    snowballDepth = 3,
     maxResults = Infinity
   ): Promise<ScraperResult[]> {
     if (!this.apiKey) {
@@ -316,8 +329,8 @@ export class YouTubeScraper {
 
       const result = await this.scrapeChannel(channelId);
       if (result) {
-        const isFoodRelated = this.isFoodRelated(result);
-        if (isFoodRelated) {
+        const isFood = await this.isFoodRelatedAsync(result);
+        if (isFood) {
           results.push(result);
 
           const details = [];
@@ -347,32 +360,34 @@ export class YouTubeScraper {
     return results;
   }
 
-  private isFoodRelated(result: ScraperResult): boolean {
-    const foodKeywords = [
-      'recipe',
-      'cook',
-      'bake',
-      'food',
-      'kitchen',
-      'chef',
-      'meal',
-      'dish',
-      'cuisine',
-      'culinary',
-      'ingredient',
-      'dining',
-      'restaurant',
-      'eat',
-      'gastro',
-      'flavor',
-      'taste',
-      'dessert',
-      'pastry',
-      'bread',
-      'cake',
-    ];
+  private async isFoodRelatedAsync(result: ScraperResult): Promise<boolean> {
+    // Use AI classification if available
+    if (this.foodClassifier) {
+      try {
+        // Extract video titles from content samples
+        const videoTitles = result.content_samples?.map((video) => video.title_or_caption).filter(Boolean) || [];
 
-    const textToCheck = `${result.display_name} ${result.bio_text || ''}`.toLowerCase();
-    return foodKeywords.some((keyword) => textToCheck.includes(keyword));
+        const classification = await this.foodClassifier.isFoodCreator({
+          platform: 'youtube',
+          handle: result.handle,
+          displayName: result.display_name,
+          bio: result.bio_text,
+          recentPosts: videoTitles.slice(0, 10), // Send first 10 video titles for context
+        });
+
+        console.log(
+          `    ${classification.isFoodCreator ? '✅' : '❌'} AI: ${classification.isFoodCreator ? 'FOOD' : 'NOT FOOD'} (confidence: ${(classification.confidence * 100).toFixed(0)}%)`
+        );
+        console.log(`    Reason: ${classification.reason}`);
+
+        return classification.isFoodCreator && classification.confidence > 0.4;
+      } catch (error: any) {
+        console.log(`    ⚠️  AI classification failed: ${error.message}`);
+        console.log(`    Falling back to keyword detection...`);
+      }
+    }
+
+    // Fallback to keyword-based detection using shared utility
+    return isFoodRelated(result);
   }
 }
