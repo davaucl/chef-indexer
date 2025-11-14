@@ -1,0 +1,54 @@
+{
+  "name": "chef-indexer",
+  "version": "1.0.0",
+  "description": "Food content creator discovery and indexing system",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "discover": "tsx src/index.ts discover",
+    "enrich": "tsx src/index.ts enrich",
+    "export": "tsx src/index.ts export",
+    "test": "npm run test:instagram && npm run test:youtube && npm run test:patreon && npm run test:substack",
+    "test:all": "npm run test",
+    "test:substack": "tsx tests/platforms/substack.ts",
+    "test:patreon": "tsx tests/platforms/patreon.ts",
+    "test:youtube": "tsx tests/platforms/youtube.ts",
+    "test:instagram": "tsx tests/instagram/basic.ts",
+    "test:instagram:snowball": "tsx tests/instagram/snowball.ts",
+    "test:instagram:headless": "tsx tests/instagram/headless.ts",
+    "test:instagram:metrics": "tsx tests/instagram/post-metrics.ts",
+    "test:content": "tsx tests/utils/content-analysis.ts",
+    "scrape:instagram": "tsx scripts/run-full-instagram-scrape.ts",
+    "scrape:instagram:fresh": "tsx scripts/run-full-instagram-scrape.ts --backup --clear",
+    "discover:all": "tsx src/discovery-engine.ts",
+    "db:status": "tsx scripts/check-db-status.ts",
+    "debug:instagram": "tsx scripts/debug-instagram.ts",
+    "test:snowball": "tsx scripts/test-snowball-discovery.ts",
+    "seeds:expand": "tsx scripts/expand-seeds.ts",
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts"
+  },
+  "keywords": [
+    "scraper",
+    "food",
+    "creators"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.7.0",
+    "better-sqlite3": "^11.0.0",
+    "cheerio": "^1.0.0",
+    "dotenv": "^16.4.0",
+    "openai": "^4.104.0",
+    "p-limit": "^5.0.0",
+    "p-retry": "^6.0.0",
+    "puppeteer": "^24.30.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/node": "^20.0.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0"
+  }
+}

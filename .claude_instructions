@@ -1,0 +1,422 @@
+# Chef Indexer - Project Context
+
+## Project Overview
+
+**Chef Indexer** is a sophisticated food content creator discovery and indexing system that automatically scrapes, indexes, and analyzes food creators across multiple social media platforms using a "snowball discovery" approach combined with AI-powered filtering.
+
+### Core Purpose
+- Discover and index food content creators across Instagram, YouTube, Patreon, and Substack
+- Build a comprehensive database with engagement metrics and content samples
+- Use AI (GPT-4o-mini) to filter out non-food creators
+- Enable cross-platform creator mapping (same creator on multiple platforms)
+
+### Technology Stack
+- **Runtime**: Node.js with TypeScript
+- **Database**: SQLite (better-sqlite3) - local storage in `./data/creators.db`
+- **Web Scraping**: axios, cheerio, puppeteer (headless browser)
+- **AI**: OpenAI GPT-4o-mini for content classification
+- **Build**: tsx for development, tsc for production builds
+
+---
+
+## Project Structure
+
+### Directory Layout
+
+```
+chef-indexer/
+├── src/                          # Core application code
+│   ├── models/
+│   │   └── types.ts              # TypeScript interfaces (Creator, PlatformAccount, ContentSample)
+│   ├── storage/
+│   │   └── database.ts           # SQLite operations and schema management
+│   ├── scrapers/                 # Platform-specific scrapers
+│   │   ├── instagram.ts          # Instagram scraping (basic + headless with metrics)
+│   │   ├── youtube.ts            # YouTube Data API v3 integration
+│   │   ├── patreon.ts            # Patreon web scraping
+│   │   └── substack.ts           # Substack newsletter scraping
+│   ├── utils/                    # Utility functions
+│   │   ├── helpers.ts            # General utilities (delays, URL parsing, emoji removal)
+│   │   ├── headless.ts           # Puppeteer browser management
+│   │   ├── food-classifier.ts    # AI-powered food creator detection
+│   │   └── content-classifier.ts # Content analysis utilities
+│   ├── data/
+│   │   └── seeds.ts              # Seed profiles (268 Instagram, 10 YouTube, etc.)
+│   ├── index.ts                  # Main CLI entry point
+│   ├── discovery-engine.ts       # Snowball discovery orchestrator
+│   └── config.ts                 # Configuration and environment variables
+├── tests/                        # All test files (organized by category)
+│   ├── instagram/                # Instagram-specific tests
+│   │   ├── basic.ts              # Basic scraping test
+│   │   ├── snowball.ts           # Snowball discovery test
+│   │   ├── headless.ts           # Headless browser test
+│   │   ├── post-metrics.ts       # Engagement metrics test
+│   │   └── ...                   # More Instagram tests
+│   ├── platforms/                # Other platform tests
+│   │   ├── youtube.ts
+│   │   ├── patreon.ts
+│   │   └── substack.ts
+│   └── utils/
+│       └── content-analysis.ts   # Content analysis tests
+├── scripts/                      # Utility/debug scripts
+│   ├── check-db-status.ts        # Database inspection tool
+│   ├── debug-instagram.ts        # Instagram debugging utility
+│   └── run-full-instagram-scrape.ts  # Standalone full scraper
+├── data/                         # Runtime data (gitignored)
+│   ├── creators.db               # SQLite database (currently 3.2MB, 327 creators)
+│   └── discovery_checkpoint.json # Resume checkpoint for long-running jobs
+└── docs/                         # Documentation
+    ├── README.md                 # Main documentation
+    ├── DISCOVERY-ENGINE.md       # Snowball discovery system details
+    ├── AI-FILTERING.md           # AI pre-filtering explanation
+    ├── OVERNIGHT-SCRAPE.md       # Long-running job guide
+    └── START-DISCOVERY.md        # Quick start guide
+```
+
+---
+
+## Key Components & Architecture
+
+### 1. Data Models (`src/models/types.ts`)
+
+**Core Types:**
+- `Creator` - Unique creator entity (cross-platform)
+- `PlatformAccount` - Platform-specific profile (Instagram, YouTube, etc.)
+- `ContentSample` - Individual posts/videos with engagement metrics
+
+### 2. Database Layer (`src/storage/database.ts`)
+
+**SQLite Schema (3 main tables):**
+- `creators` - Unique creators (327 total currently)
+- `platform_accounts` - Platform-specific profiles (327 accounts)
+- `content_samples` - Posts/videos/articles (3,647 samples currently)
+
+**Key Methods:**
+- `upsertCreatorFromPlatformData()` - Main data insertion method
+- `getStats()` - Database statistics
+- Handles deduplication by URL
+
+### 3. Scrapers (`src/scrapers/`)
+
+Each platform has its own scraper implementing a common pattern:
+
+**Instagram (`instagram.ts`)** - Most sophisticated:
+- Basic web scraping mode
+- Headless browser mode (Puppeteer) for full metrics
+- Extracts "similar accounts" for snowball discovery
+- Can fetch engagement metrics (likes, comments) per post
+- ~400 lines of code
+
+**YouTube (`youtube.ts`):**
+- Uses official YouTube Data API v3
+- Channel details, subscriber counts, video metrics
+- Fastest scraper (~5 seconds per channel)
+
+**Patreon (`patreon.ts`):**
+- Web scraping for creator profiles
+- Patron counts, subscription pricing
+
+**Substack (`substack.ts`):**
+- Newsletter publication scraping
+- Subscriber estimates, article samples
+
+### 4. Discovery Engine (`src/discovery-engine.ts`)
+
+**Snowball Discovery Algorithm:**
+- Priority-based queue (seeds → 1st degree → 2nd degree)
+- Breadth-first network exploration
+- Expected to discover 10,000+ creators from 268 seeds
+- Cross-platform discovery via bio link extraction
+- Checkpoint/resume capability
+
+### 5. AI Classification (`src/utils/food-classifier.ts`)
+
+**GPT-4o-mini powered filtering:**
+- Pre-filters non-food creators before full scrape
+- Analyzes bio + 3 sample posts
+- 70% confidence threshold
+- Cost-effective: ~$0.0001 per classification
+- Filters out ~40% of discovered accounts
+
+### 6. CLI Interface (`src/index.ts`)
+
+**Commands:**
+- `discover` - Start discovery process
+- `enrich` - AI enrichment (planned, not yet functional)
+- `export` - Export database to JSON
+- `stats` - Database statistics
+
+---
+
+## Common Development Tasks
+
+### Running Scripts
+
+```bash
+# Main application
+npm start                        # Run CLI
+npm run discover                 # Start discovery
+npm run export                   # Export database
+
+# Testing
+npm test                         # Run all platform tests
+npm run test:instagram           # Test Instagram scraper
+npm run test:youtube             # Test YouTube scraper
+npm run test:instagram:headless  # Test headless Instagram scraper
+
+# Database
+npm run db:status                # Show database statistics
+
+# Full scraping
+npm run scrape:instagram         # Full Instagram scrape (all seeds)
+npm run scrape:instagram:fresh   # Fresh scrape (backup + clear DB)
+
+# Debugging
+npm run debug:instagram          # Debug Instagram HTML structure
+
+# Development
+npm run build                    # Compile TypeScript
+npm run dev                      # Watch mode
+```
+
+### Working with Tests
+
+All test files are in `tests/` directory. To add a new test:
+1. Create file in appropriate subdirectory (`tests/instagram/`, `tests/platforms/`, `tests/utils/`)
+2. Import from `../../src/` (for tests in subdirs) or `../src/` (for root-level tests)
+3. Add script to `package.json` if needed
+
+### Working with Scrapers
+
+When modifying or adding scrapers:
+- Follow the pattern in existing scrapers (`src/scrapers/*.ts`)
+- Return `PlatformAccount` objects with `ContentSample[]`
+- Use `p-retry` for error handling
+- Use `p-limit` for concurrency control
+- Implement rate limiting (2s delay between requests)
+
+### Database Operations
+
+The database is automatically managed:
+- Auto-deduplication by URL
+- Emoji removal from text
+- URL normalization (query parameter removal)
+- Engagement rate calculations
+
+**Direct SQL Access:**
+```typescript
+import { DatabaseManager } from './src/storage/database';
+const db = new DatabaseManager();
+const results = (db as any).db.prepare('SELECT * FROM creators').all();
+```
+
+---
+
+## Configuration & Environment
+
+### Required Environment Variables (`.env`)
+
+```bash
+# Required for AI filtering
+OPENAI_API_KEY=sk-...
+
+# Required for YouTube scraping
+YOUTUBE_API_KEY=...
+
+# Optional (improves Instagram access)
+INSTAGRAM_SESSIONID=...
+
+# Database path (default: ./data/creators.db)
+DATABASE_PATH=./data/creators.db
+
+# Rate limiting
+REQUEST_DELAY_MS=2000
+MAX_CONCURRENT_REQUESTS=3
+```
+
+### Configuration (`src/config.ts`)
+
+Central configuration for:
+- API keys (loaded from `.env`)
+- Food-related keywords
+- Rate limiting settings
+- File paths
+
+---
+
+## Important Implementation Details
+
+### Instagram Scraping
+- Two modes: basic (fast) and headless (slow but complete)
+- Headless mode required for engagement metrics
+- Session ID improves access but not required
+- ~84 seconds per profile with full metrics
+
+### Cross-Platform Discovery
+- Scrapers extract social links from bios
+- Links are parsed to discover same creator on other platforms
+- Stored in `social_links` JSON array in `platform_accounts` table
+
+### Checkpoint/Resume System
+- Long-running jobs save progress to `data/discovery_checkpoint.json`
+- Can resume from checkpoint after crashes
+- Tracks processed profiles and discovery queue
+
+### Deduplication Strategy
+- URLs are normalized (lowercase, query params removed)
+- Unique constraints on `platform_accounts(platform, handle)`
+- Unique constraints on `content_samples(url)`
+- Gracefully handles duplicates with `INSERT OR IGNORE`
+
+---
+
+## Performance Characteristics
+
+**Scraping Speed (per profile):**
+- Instagram (basic): ~10 seconds
+- Instagram (headless with metrics): ~84 seconds
+- YouTube (API): ~5 seconds
+- Patreon: ~10 seconds
+- Substack: ~8 seconds
+
+**Database Size:**
+- Current: 3.2MB (327 creators, 3,647 content samples)
+- Expected full run: ~50-100MB (10,000+ creators)
+
+**Cost Estimates:**
+- AI classification: ~$1 per 10,000 profiles
+- YouTube API: Free tier (10,000 units/day = ~300 channels)
+
+---
+
+## Known Limitations & Future Work
+
+### Current Limitations
+- TikTok scraper not implemented
+- AI enrichment command placeholder (not functional)
+- No formal unit tests (only integration tests)
+- No CI/CD pipeline
+- No Docker containerization
+
+### Planned Features
+- TikTok platform support
+- AI-powered content categorization (home cook vs professional chef)
+- Engagement rate trends over time
+- API/web interface for querying data
+- Additional export formats (CSV, PostgreSQL)
+
+---
+
+## Code Style & Conventions
+
+- **TypeScript strict mode** enabled
+- **Async/await** for all asynchronous operations
+- **Error handling** with try-catch and p-retry
+- **Logging** with emoji prefixes for visual clarity (📊, ✅, ❌, 🔍, etc.)
+- **Type safety** - prefer explicit types over `any`
+- **Functional style** - prefer pure functions when possible
+
+### Import Conventions
+```typescript
+// Core modules
+import { DatabaseManager } from './storage/database';
+import { InstagramScraper } from './scrapers/instagram';
+
+// Types
+import type { Creator, PlatformAccount } from './models/types';
+
+// Utils
+import { delay, removeEmojis } from './utils/helpers';
+
+// Config
+import { config } from './config';
+```
+
+---
+
+## Debugging Tips
+
+### Database Inspection
+```bash
+npm run db:status                 # Quick stats
+sqlite3 data/creators.db         # Direct SQL access
+```
+
+### Instagram Issues
+```bash
+npm run debug:instagram          # Saves HTML for inspection
+# Check if Instagram is blocking requests
+# Try adding INSTAGRAM_SESSIONID to .env
+```
+
+### Test Individual Components
+```bash
+npm run test:youtube             # Test one platform
+npm run test:instagram:headless  # Test headless browser
+npm run test:content             # Test content analysis
+```
+
+### Check Logs
+- Scrapers log every 10 profiles
+- Errors include profile handle and error message
+- Progress indicators show estimated completion time
+
+---
+
+## Data Flow
+
+```
+1. Seed Profiles (src/data/seeds.ts)
+   ↓
+2. Discovery Engine (src/discovery-engine.ts)
+   ↓
+3. AI Pre-Filter (src/utils/food-classifier.ts)
+   ↓ [70%+ confidence]
+4. Platform Scraper (src/scrapers/*.ts)
+   ↓
+5. Database Storage (src/storage/database.ts)
+   ↓
+6. Cross-Platform Discovery (extract social links)
+   ↓
+7. Add to Discovery Queue
+   ↓
+8. Repeat from step 3
+```
+
+---
+
+## Getting Help
+
+- **Main README**: `README.md` - Setup and basic usage
+- **Discovery System**: `DISCOVERY-ENGINE.md` - Detailed algorithm explanation
+- **AI Filtering**: `AI-FILTERING.md` - How pre-filtering works
+- **Long Jobs**: `OVERNIGHT-SCRAPE.md` - Running multi-day scrapes
+- **Quick Start**: `START-DISCOVERY.md` - Get started quickly
+
+---
+
+## Quick Reference
+
+### Most Important Files
+- `src/index.ts` - CLI entry point, start here
+- `src/discovery-engine.ts` - Main discovery logic
+- `src/scrapers/instagram.ts` - Most complex scraper, good reference
+- `src/storage/database.ts` - All database operations
+- `src/config.ts` - Configuration management
+
+### Adding a New Platform
+1. Create `src/scrapers/newplatform.ts`
+2. Implement `scrapeProfile()` method returning `PlatformAccount`
+3. Add to discovery engine in `src/discovery-engine.ts`
+4. Create test file in `tests/platforms/newplatform.ts`
+5. Add npm script to `package.json`
+
+### Modifying Database Schema
+1. Update types in `src/models/types.ts`
+2. Update schema in `src/storage/database.ts` (constructor)
+3. Handle migration if needed (no migrations setup yet)
+4. Update related queries in `DatabaseManager` methods
+
+---
+
+This project is production-ready and actively collecting data. The codebase is well-organized, thoroughly documented, and implements advanced patterns for web scraping at scale.

@@ -1,0 +1,44 @@
+services:
+  # Background Worker for scraping
+  - type: worker
+    name: chef-indexer-scraper
+    env: node
+    plan: starter # or free (free has more limitations)
+    buildCommand: npm install && npm run build
+    startCommand: npm run discover
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: OPENAI_API_KEY
+        sync: false # Set in Render dashboard
+      - key: YOUTUBE_API_KEY
+        sync: false # Set in Render dashboard
+      - key: INSTAGRAM_SESSIONID
+        sync: false # Set in Render dashboard
+      - key: DATABASE_PATH
+        value: /opt/render/project/data/creators.db
+      - key: REQUEST_DELAY_MS
+        value: 2000
+      - key: MAX_CONCURRENT_REQUESTS
+        value: 3
+      - key: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
+        value: false
+      - key: PUPPETEER_EXECUTABLE_PATH
+        value: /usr/bin/chromium-browser
+    # Persist the database between deploys
+    disk:
+      name: chef-indexer-data
+      mountPath: /opt/render/project/data
+      sizeGB: 1
+
+  # Optional: Web service for viewing stats/status
+  # Uncomment if you want a simple web interface
+  # - type: web
+  #   name: chef-indexer-api
+  #   env: node
+  #   plan: free
+  #   buildCommand: npm install && npm run build
+  #   startCommand: npm start stats
+  #   envVars:
+  #     - key: PORT
+  #       value: 10000
