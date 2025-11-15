@@ -1,6 +1,5 @@
 services:
-  # Background worker with persistent storage
-  # Trigger scraping manually via Render shell: npm run discover:prod
+  # Background worker with persistent storage - runs automatically on deploy
   - type: worker
     name: chef-indexer-scraper
     env: docker

@@ -1,6 +1,26 @@
 import puppeteer, { Browser, Page } from 'puppeteer';
 import { config } from '../config';
 import { cleanPostUrl, removeEmojis } from './helpers';
+import { existsSync } from 'fs';
+
+// Find Chromium executable by checking common paths
+function findChromiumExecutable(): string | undefined {
+  const paths = [
+    process.env.PUPPETEER_EXECUTABLE_PATH,
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/google-chrome',
+    '/usr/bin/google-chrome-stable',
+  ];
+
+  for (const path of paths) {
+    if (path && existsSync(path)) {
+      return path;
+    }
+  }
+
+  return undefined;
+}
 
 export class HeadlessBrowser {
   private browser: Browser | null = null;
@@ -9,10 +29,15 @@ export class HeadlessBrowser {
   async initialize(): Promise<void> {
     if (this.browser) return;
 
+    const executablePath = findChromiumExecutable();
     console.log('🌐 Starting headless browser...');
+    if (executablePath) {
+      console.log(`   Using Chromium at: ${executablePath}`);
+    }
+
     this.browser = await puppeteer.launch({
       headless: true,
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
+      executablePath,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
