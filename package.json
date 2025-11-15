@@ -6,6 +6,8 @@
   "scripts": {
     "start": "tsx src/index.ts",
     "start:prod": "node dist/index.js",
+    "server": "tsx src/server.ts",
+    "server:prod": "node dist/server.js",
     "discover": "tsx src/index.ts discover",
     "discover:prod": "node dist/index.js discover",
     "enrich": "tsx src/index.ts enrich",

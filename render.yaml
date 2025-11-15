@@ -1,11 +1,11 @@
 services:
-  # Cron Job for manual/scheduled scraping runs
-  - type: cron
+  # Web service with persistent storage
+  # Runs minimal server - trigger scraping manually via Render shell: npm run discover:prod
+  - type: web
     name: chef-indexer-scraper
-    schedule: "@manual" # Manual trigger only - change to cron schedule if needed (e.g., "0 0 * * *" for daily)
     env: docker
     dockerfilePath: ./Dockerfile
-    plan: starter # or free (free has more limitations)
+    plan: starter
     envVars:
       - key: NODE_ENV
         value: production
@@ -21,20 +21,10 @@ services:
         value: 2000
       - key: MAX_CONCURRENT_REQUESTS
         value: 3
-    # Persist the database between deploys
+      - key: PORT
+        value: 10000
+    # Persist the database between runs
     disk:
       name: chef-indexer-data
       mountPath: /opt/render/project/data
       sizeGB: 1
-
-  # Optional: Web service for viewing stats/status
-  # Uncomment if you want a simple web interface
-  # - type: web
-  #   name: chef-indexer-api
-  #   env: node
-  #   plan: free
-  #   buildCommand: npm install && npm run build
-  #   startCommand: npm start stats
-  #   envVars:
-  #     - key: PORT
-  #       value: 10000

@@ -56,5 +56,5 @@ RUN groupadd -r scraper && useradd -r -g scraper scraper
 RUN chown -R scraper:scraper /app
 USER scraper
 
-# Default command - use compiled JavaScript
-CMD ["node", "dist/discovery-engine.js"]
+# Run minimal server - trigger scraping manually via shell
+CMD ["node", "dist/server.js"]
