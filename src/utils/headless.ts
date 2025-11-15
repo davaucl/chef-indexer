@@ -44,10 +44,12 @@ export class HeadlessBrowser {
         '--disable-dev-shm-usage',
         '--disable-accelerated-2d-canvas',
         '--disable-gpu',
+        '--disable-crashpad',
         '--disable-crash-reporter',
         '--disable-background-networking',
         '--disable-extensions',
         '--disable-software-rasterizer',
+        '--single-process',
       ],
     });
     console.log('✅ Headless browser ready\n');
