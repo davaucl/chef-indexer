@@ -1,7 +1,7 @@
 import puppeteer, { Browser, Page } from 'puppeteer';
 import { config } from '../config';
 import { cleanPostUrl, removeEmojis } from './helpers';
-import { existsSync } from 'fs';
+import { existsSync, mkdirSync } from 'fs';
 
 // Find Chromium executable by checking common paths
 function findChromiumExecutable(): string | undefined {
@@ -28,6 +28,12 @@ export class HeadlessBrowser {
 
   async initialize(): Promise<void> {
     if (this.browser) return;
+
+    // Ensure temp directory exists for Puppeteer profiles
+    const tmpDir = process.env.TMPDIR || '/tmp';
+    if (!existsSync(tmpDir)) {
+      mkdirSync(tmpDir, { recursive: true });
+    }
 
     const executablePath = findChromiumExecutable();
     console.log('🌐 Starting headless browser...');
