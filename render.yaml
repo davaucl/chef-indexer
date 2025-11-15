@@ -4,7 +4,7 @@ services:
     name: chef-indexer-scraper
     env: docker
     dockerfilePath: ./Dockerfile
-    plan: starter
+    plan: standard
     envVars:
       - key: NODE_ENV
         value: production
@@ -19,7 +19,7 @@ services:
       - key: REQUEST_DELAY_MS
         value: 2000
       - key: MAX_CONCURRENT_REQUESTS
-        value: 3
+        value: 1
     # Persist the database between runs
     disk:
       name: chef-indexer-data

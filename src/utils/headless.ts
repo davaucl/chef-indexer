@@ -55,7 +55,6 @@ export class HeadlessBrowser {
         '--disable-background-networking',
         '--disable-extensions',
         '--disable-software-rasterizer',
-        '--single-process',
       ],
     });
     console.log('✅ Headless browser ready\n');

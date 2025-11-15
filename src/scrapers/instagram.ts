@@ -529,6 +529,12 @@ export class InstagramScraper {
     return results;
   }
 
+  async closeCurrentPage(): Promise<void> {
+    if (this.headless) {
+      await this.headless.closePage('default');
+    }
+  }
+
   async cleanup(): Promise<void> {
     if (this.headless) {
       await this.headless.close();

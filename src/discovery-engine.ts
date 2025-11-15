@@ -244,8 +244,13 @@ class DiscoveryEngine {
           console.log(`      🔗 Discovered ${discovered} cross-platform links`);
         }
       }
+
+      // Clean up: Close the page to free memory (~100-200MB per profile)
+      await this.instagramScraper.closeCurrentPage();
     } catch (error: any) {
       console.error(`   ❌ Error: ${error.message}`);
+      // Clean up on error too
+      await this.instagramScraper.closeCurrentPage();
     }
   }
 
