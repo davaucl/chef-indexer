@@ -50,12 +50,13 @@ RUN npm run build
 # Remove devDependencies after build
 RUN npm prune --production
 
-# Create data and temp directories
-RUN mkdir -p /app/data /tmp/chromium
-
 # Run as non-root user for security
 RUN groupadd -r scraper && useradd -r -g scraper scraper
-RUN chown -R scraper:scraper /app /tmp/chromium
+
+# Create data, temp, and Chromium config directories for scraper user
+RUN mkdir -p /app/data /tmp/chromium /home/scraper/.config/google-chrome/Crashpad
+RUN chown -R scraper:scraper /app /tmp/chromium /home/scraper
+
 USER scraper
 
 # Set temp directory for Chromium
