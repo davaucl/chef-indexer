@@ -700,7 +700,15 @@ class DiscoveryEngine {
       timestamp: new Date().toISOString(),
     };
 
-    fs.writeFileSync('./data/discovery_checkpoint.json', JSON.stringify(checkpoint, null, 2));
+    const checkpointPath = './data/discovery_checkpoint.json';
+    const dir = path.dirname(checkpointPath);
+
+    // Ensure directory exists before writing
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
+    fs.writeFileSync(checkpointPath, JSON.stringify(checkpoint, null, 2));
   }
 
   // Load checkpoint to resume

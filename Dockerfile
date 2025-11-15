@@ -57,4 +57,4 @@ RUN chown -R scraper:scraper /app
 USER scraper
 
 # Default command - use compiled JavaScript
-CMD ["node", "dist/index.js", "discover"]
+CMD ["node", "dist/discovery-engine.js"]
