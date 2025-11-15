@@ -56,5 +56,5 @@ RUN groupadd -r scraper && useradd -r -g scraper scraper
 RUN chown -R scraper:scraper /app
 USER scraper
 
-# Run minimal server - trigger scraping manually via shell
-CMD ["node", "dist/server.js"]
+# Keep worker alive - trigger scraping manually via Render shell
+CMD ["tail", "-f", "/dev/null"]
