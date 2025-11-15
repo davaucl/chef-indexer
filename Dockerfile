@@ -26,9 +26,11 @@ RUN apt-get update && apt-get install -y \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
-# Set Puppeteer to use installed Chromium
+# Set Puppeteer to use installed Chromium and disable crash reporting
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
+    CHROME_DEVEL_SANDBOX=/usr/lib/chromium/chrome-sandbox \
+    CHROME_NO_SANDBOX=true
 
 # Create app directory
 WORKDIR /app
@@ -48,13 +50,16 @@ RUN npm run build
 # Remove devDependencies after build
 RUN npm prune --production
 
-# Create data directory
-RUN mkdir -p /app/data
+# Create data and temp directories
+RUN mkdir -p /app/data /tmp/chromium
 
 # Run as non-root user for security
 RUN groupadd -r scraper && useradd -r -g scraper scraper
-RUN chown -R scraper:scraper /app
+RUN chown -R scraper:scraper /app /tmp/chromium
 USER scraper
+
+# Set temp directory for Chromium
+ENV TMPDIR=/tmp/chromium
 
 # Run discovery engine automatically
 CMD ["node", "dist/discovery-engine.js"]
