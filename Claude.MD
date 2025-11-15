@@ -56,9 +56,10 @@ Always prefer:
 - `discovery-engine.ts` - queue-based discovery with cross-platform linking
 
 ### Deployment
-- **Render:** Background worker with persistent disk, trigger manually via shell: `npm run discover:prod`
+- **Render:** Background worker that runs automatically on deploy with persistent disk
 - **Chromium:** Installed via Dockerfile, not env vars
 - **Checkpoint:** Saves every 50 profiles for crash recovery
+- **Control:** Stop/restart via Render dashboard, logs visible in Render logs
 
 ### AI Classification
 - Enabled for YouTube, Patreon, Substack
