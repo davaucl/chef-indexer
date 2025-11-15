@@ -56,7 +56,7 @@ Always prefer:
 - `discovery-engine.ts` - queue-based discovery with cross-platform linking
 
 ### Deployment
-- **Render:** Docker deployment (`env: docker`) with manual cron trigger
+- **Render:** Background worker with persistent disk, trigger manually via shell: `npm run discover:prod`
 - **Chromium:** Installed via Dockerfile, not env vars
 - **Checkpoint:** Saves every 50 profiles for crash recovery
 
